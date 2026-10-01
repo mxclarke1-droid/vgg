@@ -1,0 +1,2191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Santa Tracker — North Pole Tracking Network</title>
+
+<script src="https://unpkg.com/globe.gl"></script>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#000;
+    color:white;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+#globe{
+    position:absolute;
+    inset:0;
+}
+
+#logo{
+    position:fixed;
+    top:18px;
+    left:20px;
+    z-index:20;
+    text-shadow:0 2px 6px #000;
+    pointer-events:none;
+}
+
+#logo .title{
+    font-size:25px;
+    font-weight:bold;
+}
+
+#logo .subtitle{
+    font-size:11px;
+    letter-spacing:2px;
+    opacity:.8;
+}
+
+#startTracking{
+    position:fixed;
+    top:18px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:30;
+    padding:12px 25px;
+    border:1px solid rgba(255,255,255,.45);
+    border-radius:8px;
+    background:rgba(145,0,0,.95);
+    color:white;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+    box-shadow:0 4px 15px rgba(0,0,0,.5);
+}
+
+#startTracking.active{
+    background:rgba(0,105,50,.95);
+}
+
+#parentButton{
+    position:fixed;
+    top:18px;
+    right:20px;
+    z-index:30;
+    padding:10px 14px;
+    border:1px solid rgba(255,255,255,.4);
+    border-radius:7px;
+    background:rgba(0,0,0,.75);
+    color:white;
+    cursor:pointer;
+}
+
+#trackingPanel{
+    position:fixed;
+    top:85px;
+    left:20px;
+    z-index:20;
+    width:310px;
+    padding:15px;
+    background:rgba(0,0,0,.72);
+    border:1px solid rgba(255,255,255,.25);
+    border-radius:10px;
+    backdrop-filter:blur(8px);
+}
+
+.panelTitle{
+    font-size:11px;
+    letter-spacing:2px;
+    opacity:.7;
+    margin-bottom:5px;
+}
+
+.status{
+    font-size:18px;
+    font-weight:bold;
+    margin-bottom:13px;
+}
+
+.waiting{
+    color:#ffd34d;
+}
+
+.activeStatus{
+    color:#55ff88;
+}
+
+.infoRow{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:7px 0;
+    border-bottom:1px solid rgba(255,255,255,.08);
+    font-size:12px;
+}
+
+.infoName{
+    opacity:.6;
+}
+
+.infoValue{
+    text-align:right;
+    font-weight:bold;
+}
+
+#arrivalEstimate{
+    margin-top:12px;
+    padding:12px;
+    border-radius:8px;
+    background:rgba(0,100,180,.20);
+    border:1px solid rgba(80,170,255,.35);
+}
+
+.arrivalTitle{
+    font-size:10px;
+    letter-spacing:1.5px;
+    opacity:.7;
+    margin-bottom:5px;
+}
+
+.arrivalTimeBig{
+    font-size:20px;
+    font-weight:bold;
+    margin-bottom:4px;
+}
+
+.countdown{
+    font-size:13px;
+    color:#ffd34d;
+    font-weight:bold;
+}
+
+.arrivalNote{
+    margin-top:5px;
+    font-size:10px;
+    opacity:.65;
+}
+
+.signal{
+    margin-top:12px;
+    font-size:11px;
+    opacity:.7;
+}
+
+.signalBars{
+    display:flex;
+    gap:3px;
+    margin-top:5px;
+}
+
+.signalBars span{
+    width:25px;
+    height:7px;
+    background:#38d66b;
+    border-radius:2px;
+}
+
+#musicButton{
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    z-index:30;
+    padding:10px 14px;
+    background:rgba(0,0,0,.75);
+    color:white;
+    border:1px solid rgba(255,255,255,.35);
+    border-radius:8px;
+    cursor:pointer;
+}
+
+#modelNotice{
+    display:none;
+    position:fixed;
+    bottom:20px;
+    left:20px;
+    z-index:40;
+    padding:10px 14px;
+    background:rgba(0,0,0,.85);
+    border:1px solid rgba(255,255,255,.25);
+    border-radius:7px;
+    font-size:12px;
+}
+
+#parentModal{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:100;
+    background:rgba(0,0,0,.75);
+    align-items:center;
+    justify-content:center;
+}
+
+.modalBox{
+    width:350px;
+    padding:22px;
+    background:#111;
+    border:1px solid #555;
+    border-radius:12px;
+    box-shadow:0 15px 50px rgba(0,0,0,.7);
+}
+
+.modalBox h2{
+    margin-top:0;
+}
+
+.modalBox label{
+    display:block;
+    margin-top:14px;
+    margin-bottom:5px;
+    font-size:13px;
+    opacity:.8;
+}
+
+.modalBox select,
+.modalBox input{
+    width:100%;
+    padding:10px;
+    background:#222;
+    color:white;
+    border:1px solid #555;
+    border-radius:6px;
+}
+
+.modalButtons{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    margin-top:18px;
+}
+
+.modalButtons button{
+    padding:9px 14px;
+    border:1px solid #555;
+    border-radius:6px;
+    background:#222;
+    color:white;
+    cursor:pointer;
+}
+
+.modalButtons .save{
+    background:#087a35;
+}
+
+.estimate{
+    margin-top:15px;
+    padding:10px;
+    background:rgba(255,255,255,.06);
+    border-radius:6px;
+    font-size:12px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="logo">
+    <div class="title">🎅 SANTA TRACKER</div>
+    <div class="subtitle">NORTH POLE TRACKING NETWORK</div>
+</div>
+
+<button id="startTracking">
+    🎅 START TRACKING
+</button>
+
+<button id="parentButton">
+    ⚙ Parent Settings
+</button>
+
+<button id="musicButton">
+    🔊 Music: OFF
+</button>
+
+<div id="modelNotice">
+    🛷 Loading Santa's sleigh...
+</div>
+
+<div id="trackingPanel">
+
+    <div class="panelTitle">
+        NORTH POLE TRACKING NETWORK
+    </div>
+
+    <div id="trackingStatus" class="status waiting">
+        WAITING FOR TRACKING
+    </div>
+
+    <div class="infoRow">
+        <span class="infoName">SANTA'S LOCATION</span>
+        <span class="infoValue" id="location">NORTH POLE</span>
+    </div>
+
+    <div class="infoRow">
+        <span class="infoName">DESTINATION</span>
+        <span class="infoValue" id="destination">NOT SET</span>
+    </div>
+
+    <div class="infoRow">
+        <span class="infoName">ROUTE</span>
+        <span class="infoValue" id="routeStatus">STANDING BY</span>
+    </div>
+
+    <div class="infoRow">
+        <span class="infoName">FLIGHT SPEED</span>
+        <span class="infoValue">1,850 MPH</span>
+    </div>
+
+    <div class="infoRow">
+        <span class="infoName">ALTITUDE</span>
+        <span class="infoValue">32,000 FT</span>
+    </div>
+
+    <div class="infoRow">
+        <span class="infoName">REINDEER</span>
+        <span class="infoValue">9 DETECTED</span>
+    </div>
+
+    <div class="infoRow">
+        <span class="infoName">HOME ARRIVAL</span>
+        <span class="infoValue" id="homeEta">NOT SET</span>
+    </div>
+
+    <div id="arrivalEstimate">
+
+        <div class="arrivalTitle">
+            ESTIMATED SANTA ARRIVAL
+        </div>
+
+        <div class="arrivalTimeBig" id="arrivalClock">
+            NOT CALCULATED
+        </div>
+
+        <div class="countdown" id="arrivalCountdown">
+            Waiting for tracking...
+        </div>
+
+        <div class="arrivalNote">
+            Fictional tracking estimate based on the selected route.
+        </div>
+
+    </div>
+
+    <div class="infoRow">
+        <span class="infoName">TRACKING SYSTEM</span>
+        <span class="infoValue">ACTIVE</span>
+    </div>
+
+    <div class="infoRow">
+        <span class="infoName">CELL TOWERS</span>
+        <span class="infoValue">CONNECTED</span>
+    </div>
+
+    <div class="infoRow">
+        <span class="infoName">SATELLITES</span>
+        <span class="infoValue">CONNECTED</span>
+    </div>
+
+    <div class="signal">
+        RADIO TRACKING SIGNAL
+
+        <div class="signalBars">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+
+</div>
+
+<div id="parentModal">
+
+    <div class="modalBox">
+
+        <h2>🎄 Parent Settings</h2>
+
+        <label for="stateSelect">
+            State
+        </label>
+
+        <select id="stateSelect"></select>
+
+        <label for="arrivalTime">
+            Santa arrival time
+        </label>
+
+        <input id="arrivalTime" type="time">
+
+        <div class="estimate">
+            Choose the state where Santa should finish his fictional tracking route.
+            The time you choose will be displayed as the planned home arrival.
+        </div>
+
+        <div class="modalButtons">
+
+            <button id="cancelParent">
+                Cancel
+            </button>
+
+            <button id="saveParent" class="save">
+                Save Settings
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<audio id="christmasMusic" loop>
+    <source
+        src="pulsebox-jazz-christmas-432315.mp3"
+        type="audio/mpeg"
+    >
+</audio>
+
+<div id="globe"></div>
+
+<script>
+
+/* =========================================================
+   BASIC VARIABLES
+   ========================================================= */
+
+let trackingStarted = false;
+
+let santaModelTemplate = null;
+
+let santaLoaded = false;
+
+let flightStartTime = 0;
+
+const segmentDuration = 5200;
+
+
+/*
+   THIS IS THE GLB YOU ALREADY PROVIDED AND TESTED.
+*/
+const MODEL_FILE =
+    "santa_-_norad_santa_tracker.glb";
+
+
+/*
+   Globe.gl uses a globe radius of about 100.
+   This is the approximate size we want Santa's
+   entire sleigh/reindeer model to have.
+*/
+const SANTA_MODEL_SIZE = 8;
+
+
+/*
+   This keeps Santa slightly above the globe.
+*/
+const SANTA_ALTITUDE = 0.08;
+
+
+const startButton =
+    document.getElementById("startTracking");
+
+const parentButton =
+    document.getElementById("parentButton");
+
+const musicButton =
+    document.getElementById("musicButton");
+
+const parentModal =
+    document.getElementById("parentModal");
+
+const cancelParent =
+    document.getElementById("cancelParent");
+
+const saveParent =
+    document.getElementById("saveParent");
+
+const stateSelect =
+    document.getElementById("stateSelect");
+
+const arrivalTime =
+    document.getElementById("arrivalTime");
+
+const homeEta =
+    document.getElementById("homeEta");
+
+const trackingStatus =
+    document.getElementById("trackingStatus");
+
+const locationElement =
+    document.getElementById("location");
+
+const destinationElement =
+    document.getElementById("destination");
+
+const routeStatus =
+    document.getElementById("routeStatus");
+
+const modelNotice =
+    document.getElementById("modelNotice");
+
+const christmasMusic =
+    document.getElementById("christmasMusic");
+
+const arrivalClock =
+    document.getElementById("arrivalClock");
+
+const arrivalCountdown =
+    document.getElementById("arrivalCountdown");
+
+
+/* =========================================================
+   STATES
+   ========================================================= */
+
+const stateLocations = {
+
+Alabama:[32.806,-86.792,"ALABAMA"],
+Alaska:[64.2,-149.493,"ALASKA"],
+Arizona:[34.048,-111.093,"ARIZONA"],
+Arkansas:[34.799,-92.199,"ARKANSAS"],
+California:[36.778,-119.418,"CALIFORNIA"],
+Colorado:[39,-105.5,"COLORADO"],
+Connecticut:[41.6,-72.7,"CONNECTICUT"],
+Delaware:[39,-75.5,"DELAWARE"],
+Florida:[27.664,-81.515,"FLORIDA"],
+Georgia:[32.165,-82.9,"GEORGIA"],
+Hawaii:[20.8,-156.3,"HAWAII"],
+Idaho:[44.1,-114.7,"IDAHO"],
+Illinois:[40,-89,"ILLINOIS"],
+Indiana:[40,-86,"INDIANA"],
+Iowa:[42,-93.5,"IOWA"],
+Kansas:[38.5,-98,"KANSAS"],
+Kentucky:[37.8,-85.8,"KENTUCKY"],
+Louisiana:[31,-92,"LOUISIANA"],
+Maine:[45.3,-69,"MAINE"],
+Maryland:[39,-76.7,"MARYLAND"],
+Massachusetts:[42.3,-71.8,"MASSACHUSETTS"],
+Michigan:[44.3,-85.6,"MICHIGAN"],
+Minnesota:[46.4,-94.6,"MINNESOTA"],
+Mississippi:[32.7,-89.7,"MISSISSIPPI"],
+Missouri:[38.4,-92.5,"MISSOURI"],
+Montana:[47,-110,"MONTANA"],
+Nebraska:[41.5,-99.8,"NEBRASKA"],
+Nevada:[39,-116.7,"NEVADA"],
+"New Hampshire":[43.7,-71.6,"NEW HAMPSHIRE"],
+"New Jersey":[40.1,-74.7,"NEW JERSEY"],
+"New Mexico":[34.5,-106,"NEW MEXICO"],
+"New York":[42.9,-75.5,"NEW YORK"],
+"North Carolina":[35.5,-79,"NORTH CAROLINA"],
+"North Dakota":[47.5,-100.5,"NORTH DAKOTA"],
+Ohio:[40.4,-82.8,"OHIO"],
+Oklahoma:[35.5,-97.5,"OKLAHOMA"],
+Oregon:[44,-120.5,"OREGON"],
+Pennsylvania:[41.2,-77.2,"PENNSYLVANIA"],
+"Rhode Island":[41.7,-71.5,"RHODE ISLAND"],
+"South Carolina":[33.8,-80.9,"SOUTH CAROLINA"],
+"South Dakota":[44.4,-100.2,"SOUTH DAKOTA"],
+Tennessee:[35.8,-86.4,"TENNESSEE"],
+Texas:[31,-99.9,"TEXAS"],
+Utah:[39.3,-111.7,"UTAH"],
+Vermont:[44,-72.7,"VERMONT"],
+Virginia:[37.4,-78.7,"VIRGINIA"],
+Washington:[47.4,-120.7,"WASHINGTON"],
+"West Virginia":[38.6,-80.5,"WEST VIRGINIA"],
+Wisconsin:[44.5,-89.5,"WISCONSIN"],
+Wyoming:[43,-107.5,"WYOMING"],
+"District of Columbia":[38.907,-77.036,"WASHINGTON DC"]
+
+};
+
+
+/* =========================================================
+   STATE MENU
+   ========================================================= */
+
+Object.keys(stateLocations).forEach(state => {
+
+    const option =
+        document.createElement("option");
+
+    option.value = state;
+
+    option.textContent = state;
+
+    stateSelect.appendChild(option);
+
+});
+
+
+/* =========================================================
+   TIME FUNCTIONS
+   ========================================================= */
+
+function formatTime12(timeString){
+
+    if(!timeString){
+        return "NOT SET";
+    }
+
+    const parts =
+        timeString.split(":");
+
+    let hour =
+        Number(parts[0]);
+
+    const minute =
+        Number(parts[1]);
+
+    const ampm =
+        hour >= 12 ? "PM" : "AM";
+
+    hour =
+        hour % 12 || 12;
+
+    return (
+        hour +
+        ":" +
+        String(minute).padStart(2,"0") +
+        " " +
+        ampm
+    );
+}
+
+
+function getArrivalDate(){
+
+    let saved = null;
+
+    try{
+
+        saved =
+            JSON.parse(
+                localStorage.getItem(
+                    "santaParentSettings"
+                ) || "null"
+            );
+
+    }catch(error){
+
+        return null;
+
+    }
+
+    if(!saved || !saved.time){
+
+        return null;
+
+    }
+
+    const parts =
+        saved.time.split(":");
+
+    const now =
+        new Date();
+
+    const arrival =
+        new Date();
+
+    arrival.setHours(
+        Number(parts[0]),
+        Number(parts[1]),
+        0,
+        0
+    );
+
+    if(arrival <= now){
+
+        arrival.setDate(
+            arrival.getDate()+1
+        );
+
+    }
+
+    return arrival;
+}
+
+
+function updateArrivalCountdown(){
+
+    const arrival =
+        getArrivalDate();
+
+    if(!arrival){
+
+        arrivalClock.textContent =
+            "NOT CALCULATED";
+
+        arrivalCountdown.textContent =
+            "Set an arrival time in Parent Settings.";
+
+        return;
+
+    }
+
+    arrivalClock.textContent =
+        arrival.toLocaleTimeString(
+            [],
+            {
+                hour:"numeric",
+                minute:"2-digit"
+            }
+        );
+
+    const difference =
+        arrival.getTime() -
+        Date.now();
+
+    if(difference <= 0){
+
+        arrivalCountdown.textContent =
+            "🎅 ARRIVAL TIME REACHED";
+
+        return;
+
+    }
+
+    const totalSeconds =
+        Math.floor(
+            difference / 1000
+        );
+
+    const hours =
+        Math.floor(
+            totalSeconds / 3600
+        );
+
+    const minutes =
+        Math.floor(
+            (totalSeconds % 3600) / 60
+        );
+
+    const seconds =
+        totalSeconds % 60;
+
+    arrivalCountdown.textContent =
+        "⏱ " +
+        hours +
+        "h " +
+        minutes +
+        "m " +
+        seconds +
+        "s until arrival";
+
+}
+
+setInterval(
+    updateArrivalCountdown,
+    1000
+);
+
+
+/* =========================================================
+   PARENT SETTINGS
+   ========================================================= */
+
+parentButton.addEventListener(
+    "click",
+    ()=>{
+        parentModal.style.display =
+            "flex";
+    }
+);
+
+
+cancelParent.addEventListener(
+    "click",
+    ()=>{
+        parentModal.style.display =
+            "none";
+    }
+);
+
+
+saveParent.addEventListener(
+    "click",
+    ()=>{
+
+        const settings = {
+
+            state:
+                stateSelect.value,
+
+            time:
+                arrivalTime.value
+
+        };
+
+        localStorage.setItem(
+            "santaParentSettings",
+            JSON.stringify(settings)
+        );
+
+        const state =
+            stateLocations[
+                stateSelect.value
+            ];
+
+        destinationElement.textContent =
+            state[2];
+
+        homeEta.textContent =
+            arrivalTime.value
+            ? formatTime12(
+                arrivalTime.value
+            )
+            : "NOT SET";
+
+        arrivalClock.textContent =
+            arrivalTime.value
+            ? formatTime12(
+                arrivalTime.value
+            )
+            : "NOT CALCULATED";
+
+        parentModal.style.display =
+            "none";
+
+        updateArrivalCountdown();
+
+    }
+);
+
+
+/* =========================================================
+   LOAD SAVED SETTINGS
+   ========================================================= */
+
+try{
+
+    const saved =
+        JSON.parse(
+            localStorage.getItem(
+                "santaParentSettings"
+            ) || "null"
+        );
+
+    if(saved){
+
+        if(saved.state){
+
+            stateSelect.value =
+                saved.state;
+
+            if(
+                stateLocations[
+                    saved.state
+                ]
+            ){
+
+                destinationElement.textContent =
+                    stateLocations[
+                        saved.state
+                    ][2];
+
+            }
+
+        }
+
+        if(saved.time){
+
+            arrivalTime.value =
+                saved.time;
+
+            homeEta.textContent =
+                formatTime12(
+                    saved.time
+                );
+
+            arrivalClock.textContent =
+                formatTime12(
+                    saved.time
+                );
+
+        }
+
+    }
+
+}catch(error){}
+
+
+/* =========================================================
+   MUSIC
+   ========================================================= */
+
+let musicPlaying = false;
+
+musicButton.addEventListener(
+    "click",
+    async ()=>{
+
+        if(!musicPlaying){
+
+            try{
+
+                await christmasMusic.play();
+
+                musicPlaying =
+                    true;
+
+                musicButton.textContent =
+                    "🔊 Music: ON";
+
+            }catch(error){
+
+                alert(
+                    "Make sure pulsebox-jazz-christmas-432315.mp3 is in the same folder as index.html."
+                );
+
+            }
+
+        }else{
+
+            christmasMusic.pause();
+
+            musicPlaying =
+                false;
+
+            musicButton.textContent =
+                "🔊 Music: OFF";
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   CITY LABELS
+   ========================================================= */
+
+const cities = [
+
+["North Pole",89.9,0],
+["Anchorage",61.218,-149.9],
+["Vancouver",49.282,-123.12],
+["Seattle",47.606,-122.332],
+["San Francisco",37.774,-122.419],
+["Los Angeles",34.052,-118.243],
+["Denver",39.739,-104.99],
+["Dallas",32.776,-96.797],
+["Houston",29.76,-95.369],
+["Chicago",41.878,-87.63],
+["Miami",25.761,-80.191],
+["Atlanta",33.749,-84.388],
+["Washington DC",38.907,-77.036],
+["New York",40.713,-74.006],
+["Boston",42.36,-71.058],
+
+["Toronto",43.653,-79.383],
+["Montreal",45.501,-73.567],
+["Ottawa",45.421,-75.697],
+["Winnipeg",49.895,-97.138],
+["Calgary",51.045,-114.071],
+["Edmonton",53.546,-113.493],
+
+["Mexico City",19.433,-99.133],
+["Cancun",21.162,-86.851],
+["Guatemala City",14.634,-90.506],
+["Panama City",8.983,-79.519],
+["San Juan Puerto Rico",18.466,-66.106],
+["Santo Domingo",18.486,-69.931],
+
+["Bogota",4.711,-74.072],
+["Quito",-0.18,-78.468],
+["Lima",-12.046,-77.043],
+["Santiago",-33.449,-70.669],
+["Buenos Aires",-34.604,-58.382],
+["Rio de Janeiro",-22.906,-43.173],
+
+["Reykjavik",64.147,-21.943],
+["Dublin",53.35,-6.26],
+["London",51.507,-0.128],
+["Paris",48.857,2.352],
+["Madrid",40.417,-3.704],
+["Lisbon",38.722,-9.139],
+["Rome",41.902,12.496],
+["Berlin",52.52,13.405],
+["Amsterdam",52.367,4.904],
+["Vienna",48.208,16.373],
+["Athens",37.983,23.727],
+["Oslo",59.913,10.752],
+["Stockholm",59.329,18.069],
+
+["Cairo",30.044,31.236],
+["Lagos",6.524,3.379],
+["Nairobi",-1.292,36.822],
+["Johannesburg",-26.204,28.047],
+["Cape Town",-33.925,18.424],
+
+["Dubai",25.205,55.271],
+["Riyadh",24.713,46.675],
+["Doha",25.286,51.533],
+["Tehran",35.689,51.389],
+
+["Mumbai",19.076,72.878],
+["Delhi",28.614,77.209],
+["Dhaka",23.81,90.413],
+["Kathmandu",27.717,85.324],
+
+["Beijing",39.904,116.407],
+["Shanghai",31.23,121.474],
+["Hong Kong",22.319,114.169],
+["Seoul",37.566,126.978],
+["Tokyo",35.676,139.65],
+["Osaka",34.694,135.502],
+["Taipei",25.033,121.565],
+["Manila",14.599,120.984],
+["Bangkok",13.756,100.502],
+["Singapore",1.352,103.82],
+["Jakarta",-6.208,106.845],
+
+["Perth",-31.953,115.857],
+["Sydney",-33.869,151.209],
+["Melbourne",-37.814,144.963],
+["Brisbane",-27.47,153.026],
+["Auckland",-36.851,174.764]
+
+];
+
+
+const labels =
+    cities.map(c=>({
+
+        name:c[0],
+        lat:c[1],
+        lng:c[2]
+
+    }));
+
+
+/* =========================================================
+   OCEAN LABELS
+   ========================================================= */
+
+const oceanLabels = [
+
+["Pacific Ocean",0,-160],
+["Atlantic Ocean",20,-35],
+["Indian Ocean",-20,80],
+["Arctic Ocean",75,0],
+["Southern Ocean",-60,20],
+["Caribbean Sea",15,-75],
+["Gulf of Mexico",25,-90],
+["Mediterranean Sea",35,18],
+["Arabian Sea",15,65],
+["Bay of Bengal",15,88],
+["South China Sea",14,114],
+["Sea of Japan",40,135],
+["Bering Sea",60,-175],
+["Gulf of Alaska",55,-145],
+["Black Sea",43,35],
+["Red Sea",20,38],
+["North Sea",56,3]
+
+].map(o=>({
+
+    name:o[0],
+    lat:o[1],
+    lng:o[2],
+    ocean:true
+
+}));
+
+
+/* =========================================================
+   GLOBE
+   ========================================================= */
+
+const globe =
+    Globe()(
+        document.getElementById("globe")
+    )
+
+    .globeImageUrl(
+        "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+    )
+
+    .bumpImageUrl(
+        "https://unpkg.com/three-globe/example/img/earth-topology.png"
+    )
+
+    .backgroundImageUrl(
+        "https://unpkg.com/three-globe/example/img/night-sky.png"
+    )
+
+    .showAtmosphere(true)
+
+    .atmosphereColor("#4da6ff")
+
+    .atmosphereAltitude(.18)
+
+    .labelsData([
+        ...labels,
+        ...oceanLabels
+    ])
+
+    .labelLat(d=>d.lat)
+
+    .labelLng(d=>d.lng)
+
+    .labelText(d=>d.name)
+
+    .labelSize(d=>
+        d.ocean
+        ? .55
+        : .42
+    )
+
+    .labelColor(d=>
+        d.ocean
+        ? "rgba(210,225,235,.7)"
+        : "#ffffff"
+    )
+
+    .labelDotRadius(d=>
+        d.ocean
+        ? 0
+        : .10
+    )
+
+    .labelAltitude(d=>
+        d.ocean
+        ? .003
+        : .015
+    );
+
+
+globe.pointOfView({
+
+    lat:20,
+    lng:-30,
+    altitude:2.2
+
+});
+
+
+globe.controls().enableRotate = true;
+
+globe.controls().enableZoom = true;
+
+globe.controls().enablePan = false;
+
+
+/* =========================================================
+   SANTA ROUTE
+   ========================================================= */
+
+const possibleStops = [
+
+["Tokyo",35.676,139.65],
+["Seoul",37.566,126.978],
+["Sydney",-33.869,151.209],
+["Auckland",-36.851,174.764],
+["Singapore",1.352,103.82],
+["Jakarta",-6.208,106.845],
+
+["Cape Town",-33.925,18.424],
+["Nairobi",-1.292,36.822],
+["Cairo",30.044,31.236],
+
+["Rome",41.902,12.496],
+["Paris",48.857,2.352],
+["London",51.507,-.128],
+["Reykjavik",64.147,-21.943],
+
+["New York",40.713,-74.006],
+["Miami",25.761,-80.191],
+["San Juan",18.466,-66.106],
+["Santo Domingo",18.486,-69.931],
+
+["Panama",8.983,-79.519],
+["Lima",-12.046,-77.043],
+["Buenos Aires",-34.604,-58.382],
+
+["Mexico City",19.433,-99.133],
+["Los Angeles",34.052,-118.243],
+["Vancouver",49.282,-123.12],
+["Chicago",41.878,-87.63]
+
+];
+
+
+function shuffle(array){
+
+    const copy =
+        [...array];
+
+    for(
+        let i=copy.length-1;
+        i>0;
+        i--
+    ){
+
+        const j =
+            Math.floor(
+                Math.random()*(i+1)
+            );
+
+        [
+            copy[i],
+            copy[j]
+        ] =
+        [
+            copy[j],
+            copy[i]
+        ];
+
+    }
+
+    return copy;
+}
+
+
+let santaRoute = [];
+
+
+function generateRoute(){
+
+    let saved = null;
+
+    try{
+
+        saved =
+            JSON.parse(
+                localStorage.getItem(
+                    "santaParentSettings"
+                ) || "null"
+            );
+
+    }catch(error){}
+
+
+    let destination =
+        stateLocations.Georgia;
+
+
+    if(
+        saved &&
+        stateLocations[
+            saved.state
+        ]
+    ){
+
+        destination =
+            stateLocations[
+                saved.state
+            ];
+
+    }
+
+
+    const stops =
+        shuffle(
+            possibleStops
+        ).slice(0,7);
+
+
+    santaRoute = [
+
+        {
+            name:"North Pole",
+            lat:89.9,
+            lng:0
+        },
+
+        ...stops.map(s=>({
+
+            name:s[0],
+            lat:s[1],
+            lng:s[2]
+
+        })),
+
+        {
+
+            name:
+                "HOME — " +
+                destination[2],
+
+            lat:
+                destination[0],
+
+            lng:
+                destination[1]
+
+        }
+
+    ];
+
+}
+
+
+/* =========================================================
+   GREAT CIRCLE
+   ========================================================= */
+
+function geoVector(lat,lng){
+
+    const latR =
+        lat*Math.PI/180;
+
+    const lngR =
+        lng*Math.PI/180;
+
+    return {
+
+        x:
+            Math.cos(latR) *
+            Math.cos(lngR),
+
+        y:
+            Math.sin(latR),
+
+        z:
+            Math.cos(latR) *
+            Math.sin(lngR)
+
+    };
+
+}
+
+
+function vectorGeo(v){
+
+    const length =
+        Math.sqrt(
+            v.x*v.x +
+            v.y*v.y +
+            v.z*v.z
+        );
+
+    const x =
+        v.x/length;
+
+    const y =
+        v.y/length;
+
+    const z =
+        v.z/length;
+
+    return {
+
+        lat:
+            Math.asin(y) *
+            180/Math.PI,
+
+        lng:
+            Math.atan2(z,x) *
+            180/Math.PI
+
+    };
+
+}
+
+
+function interpolate(a,b,t){
+
+    const A =
+        geoVector(
+            a.lat,
+            a.lng
+        );
+
+    const B =
+        geoVector(
+            b.lat,
+            b.lng
+        );
+
+
+    let dot =
+        A.x*B.x +
+        A.y*B.y +
+        A.z*B.z;
+
+
+    dot =
+        Math.max(
+            -1,
+            Math.min(1,dot)
+        );
+
+
+    const angle =
+        Math.acos(dot);
+
+
+    if(angle < .0001){
+
+        return {
+
+            lat:
+                a.lat +
+                (b.lat-a.lat)*t,
+
+            lng:
+                a.lng +
+                (b.lng-a.lng)*t
+
+        };
+
+    }
+
+
+    const sinAngle =
+        Math.sin(angle);
+
+
+    const p1 =
+        Math.sin(
+            (1-t)*angle
+        ) /
+        sinAngle;
+
+
+    const p2 =
+        Math.sin(
+            t*angle
+        ) /
+        sinAngle;
+
+
+    return vectorGeo({
+
+        x:
+            A.x*p1 +
+            B.x*p2,
+
+        y:
+            A.y*p1 +
+            B.y*p2,
+
+        z:
+            A.z*p1 +
+            B.z*p2
+
+    });
+
+}
+
+
+/* =========================================================
+   SANTA OBJECT
+   ========================================================= */
+
+let santaObjectData = [
+
+    {
+        id:"santa",
+
+        /*
+           Start somewhere visible instead of putting
+           Santa directly at the North Pole.
+        */
+        lat:40,
+
+        lng:-74,
+
+        altitude:SANTA_ALTITUDE
+    }
+
+];
+
+
+/*
+   Create a new copy of the already-loaded GLB
+   for Globe.gl.
+*/
+
+function createSantaObject(){
+
+    if(!santaModelTemplate){
+
+        console.warn(
+            "Santa template isn't loaded yet."
+        );
+
+        return new THREE.Group();
+
+    }
+
+
+    const santa =
+        santaModelTemplate.clone(
+            true
+        );
+
+
+    /*
+       The GLB was already made for us.
+       We are NOT changing the original file.
+
+       This copy simply uses the normalized
+       size calculated when the file loaded.
+    */
+
+    santa.position.set(
+        0,
+        0,
+        0
+    );
+
+
+    santa.visible =
+        true;
+
+
+    santa.traverse(
+        function(object){
+
+            if(object.isMesh){
+
+                object.visible =
+                    true;
+
+                object.frustumCulled =
+                    false;
+
+                if(object.material){
+
+                    if(
+                        Array.isArray(
+                            object.material
+                        )
+                    ){
+
+                        object.material.forEach(
+                            material => {
+
+                                material.visible =
+                                    true;
+
+                                material.needsUpdate =
+                                    true;
+
+                            }
+                        );
+
+                    }else{
+
+                        object.material.visible =
+                            true;
+
+                        object.material.needsUpdate =
+                            true;
+
+                    }
+
+                }
+
+            }
+
+        }
+    );
+
+
+    return santa;
+
+}
+
+
+/* =========================================================
+   GLOBE SANTA OBJECT
+   ========================================================= */
+
+globe
+
+    .objectsData(
+        santaObjectData
+    )
+
+    .objectLat(
+        d=>d.lat
+    )
+
+    .objectLng(
+        d=>d.lng
+    )
+
+    .objectAltitude(
+        d=>d.altitude
+    )
+
+    .objectThreeObject(
+        d=>createSantaObject()
+    )
+
+    .objectLabel(
+        d=>"🎅 Santa's Sleigh"
+    );
+
+
+/* =========================================================
+   LOAD THE EXISTING SANTA GLB
+   ========================================================= */
+
+function loadSantaModel(){
+
+    modelNotice.style.display =
+        "block";
+
+    modelNotice.textContent =
+        "🛷 Loading Santa's sleigh...";
+
+
+    console.log(
+        "🎅 Starting Santa GLB loader..."
+    );
+
+
+    const modelURL =
+        new URL(
+            MODEL_FILE,
+            window.location.href
+        ).href;
+
+
+    console.log(
+        "Looking for Santa at:",
+        modelURL
+    );
+
+
+    if(typeof THREE === "undefined"){
+
+        console.error(
+            "Three.js did not load."
+        );
+
+        modelNotice.textContent =
+            "⚠️ Three.js failed to load.";
+
+        return;
+
+    }
+
+
+    if(
+        typeof THREE.GLTFLoader ===
+        "undefined"
+    ){
+
+        console.error(
+            "GLTFLoader did not load."
+        );
+
+        modelNotice.textContent =
+            "⚠️ GLTFLoader failed to load.";
+
+        return;
+
+    }
+
+
+    const loader =
+        new THREE.GLTFLoader();
+
+
+    loader.load(
+
+        modelURL,
+
+        function(gltf){
+
+            console.log(
+                "🎅 santa_-_norad_santa_tracker.glb loaded!"
+            );
+
+
+            /*
+               Keep the original GLB scene.
+            */
+
+            santaModelTemplate =
+                gltf.scene;
+
+
+            /*
+               =========================================
+               GLOBE.GL MODEL SIZE FIX
+               =========================================
+
+               The model itself is already made.
+               We are only calculating its dimensions
+               so Globe.gl can display it properly.
+            */
+
+            const originalBox =
+                new THREE.Box3().setFromObject(
+                    santaModelTemplate
+                );
+
+
+            const originalSize =
+                new THREE.Vector3();
+
+
+            const originalCenter =
+                new THREE.Vector3();
+
+
+            originalBox.getSize(
+                originalSize
+            );
+
+
+            originalBox.getCenter(
+                originalCenter
+            );
+
+
+            console.log(
+                "Original Santa model size:",
+                originalSize
+            );
+
+
+            /*
+               Center the model around its origin.
+
+               This is important because a GLB can have
+               its mesh far away from its origin.
+            */
+
+            santaModelTemplate.position.sub(
+                originalCenter
+            );
+
+
+            /*
+               Find the largest dimension.
+            */
+
+            const largestDimension =
+                Math.max(
+                    originalSize.x,
+                    originalSize.y,
+                    originalSize.z
+                );
+
+
+            if(
+                largestDimension > 0 &&
+                Number.isFinite(
+                    largestDimension
+                )
+            ){
+
+                const scaleFactor =
+                    SANTA_MODEL_SIZE /
+                    largestDimension;
+
+
+                santaModelTemplate.scale.set(
+                    scaleFactor,
+                    scaleFactor,
+                    scaleFactor
+                );
+
+
+                console.log(
+                    "Santa model scale factor:",
+                    scaleFactor
+                );
+
+            }else{
+
+                /*
+                   Safety fallback.
+                */
+
+                santaModelTemplate.scale.set(
+                    1,
+                    1,
+                    1
+                );
+
+            }
+
+
+            /*
+               Make every mesh visible.
+            */
+
+            santaModelTemplate.traverse(
+                function(object){
+
+                    if(object.isMesh){
+
+                        object.visible =
+                            true;
+
+                        object.frustumCulled =
+                            false;
+
+
+                        if(object.material){
+
+                            if(
+                                Array.isArray(
+                                    object.material
+                                )
+                            ){
+
+                                object.material.forEach(
+                                    material => {
+
+                                        material.visible =
+                                            true;
+
+                                        material.needsUpdate =
+                                            true;
+
+                                    }
+                                );
+
+                            }else{
+
+                                object.material.visible =
+                                    true;
+
+                                object.material.needsUpdate =
+                                    true;
+
+                            }
+
+                        }
+
+                    }
+
+                }
+            );
+
+
+            /*
+               Santa is officially loaded.
+            */
+
+            santaLoaded =
+                true;
+
+
+            /*
+               Force Globe.gl to create a fresh
+               3D object from the loaded GLB.
+            */
+
+            globe.objectsData(
+                []
+            );
+
+
+            setTimeout(
+                function(){
+
+                    globe.objectsData(
+                        santaObjectData
+                    );
+
+                },
+                50
+            );
+
+
+            modelNotice.style.display =
+                "none";
+
+
+            console.log(
+                "🎅 Santa GLB is ready for Globe.gl."
+            );
+
+
+            console.log(
+                "🎅 Santa normalized size:",
+                SANTA_MODEL_SIZE
+            );
+
+        },
+
+        function(xhr){
+
+            if(
+                xhr &&
+                xhr.total
+            ){
+
+                const percent =
+                    Math.round(
+                        xhr.loaded /
+                        xhr.total *
+                        100
+                    );
+
+
+                modelNotice.textContent =
+                    "🛷 Loading Santa's sleigh... " +
+                    percent +
+                    "%";
+
+            }
+
+        },
+
+        function(error){
+
+            console.error(
+                "❌ Santa GLB loading error:",
+                error
+            );
+
+
+            modelNotice.textContent =
+                "⚠️ santa_-_norad_santa_tracker.glb could not be loaded.";
+
+        }
+
+    );
+
+}
+
+
+/*
+   Give Globe.gl time to initialize.
+*/
+
+setTimeout(
+    loadSantaModel,
+    1500
+);
+
+
+/* =========================================================
+   START TRACKING
+   ========================================================= */
+
+startButton.addEventListener(
+    "click",
+    ()=>{
+
+        if(!trackingStarted){
+
+            generateRoute();
+
+
+            const destination =
+                santaRoute[
+                    santaRoute.length-1
+                ];
+
+
+            destinationElement.textContent =
+                destination.name;
+
+
+            flightStartTime =
+                performance.now();
+
+
+            trackingStarted =
+                true;
+
+
+            startButton.textContent =
+                "🟢 TRACKING SANTA";
+
+
+            startButton.classList.add(
+                "active"
+            );
+
+
+            trackingStatus.textContent =
+                "TRACKING ACTIVE";
+
+
+            trackingStatus.className =
+                "status activeStatus";
+
+
+            routeStatus.textContent =
+                "NEW ROUTE GENERATED";
+
+
+            updateArrivalCountdown();
+
+
+        }else{
+
+            trackingStarted =
+                false;
+
+
+            startButton.textContent =
+                "🎅 START TRACKING";
+
+
+            startButton.classList.remove(
+                "active"
+            );
+
+
+            trackingStatus.textContent =
+                "TRACKING PAUSED";
+
+
+            trackingStatus.className =
+                "status waiting";
+
+
+            routeStatus.textContent =
+                "STANDING BY";
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   SANTA ANIMATION
+   ========================================================= */
+
+function animate(time){
+
+    if(
+        trackingStarted &&
+        santaLoaded &&
+        santaRoute.length > 1
+    ){
+
+        const elapsed =
+            time -
+            flightStartTime;
+
+
+        const total =
+            (
+                santaRoute.length - 1
+            ) *
+            segmentDuration;
+
+
+        const clamped =
+            Math.min(
+                Math.max(
+                    elapsed,
+                    0
+                ),
+                total
+            );
+
+
+        const segmentFloat =
+            clamped /
+            segmentDuration;
+
+
+        const index =
+            Math.min(
+                Math.floor(
+                    segmentFloat
+                ),
+                santaRoute.length-2
+            );
+
+
+        const t =
+            segmentFloat -
+            index;
+
+
+        const start =
+            santaRoute[index];
+
+
+        const end =
+            santaRoute[
+                index+1
+            ];
+
+
+        const position =
+            interpolate(
+                start,
+                end,
+                t
+            );
+
+
+        santaObjectData[0].lat =
+            position.lat;
+
+        santaObjectData[0].lng =
+            position.lng;
+
+        santaObjectData[0].altitude =
+            SANTA_ALTITUDE;
+
+
+        /*
+           Refresh the Globe.gl object position.
+        */
+
+        globe.objectsData(
+            santaObjectData
+        );
+
+
+        if(clamped >= total){
+
+            locationElement.textContent =
+                end.name.toUpperCase();
+
+
+            routeStatus.textContent =
+                "ARRIVED";
+
+
+            trackingStatus.textContent =
+                "SANTA HAS ARRIVED";
+
+
+            arrivalCountdown.textContent =
+                "🎅 SANTA HAS ARRIVED!";
+
+
+        }else{
+
+            locationElement.textContent =
+                start.name.toUpperCase();
+
+
+            routeStatus.textContent =
+                "TO " +
+                end.name.toUpperCase();
+
+        }
+
+    }
+
+
+    requestAnimationFrame(
+        animate
+    );
+
+}
+
+
+requestAnimationFrame(
+    animate
+);
+
+</script>
+
+</body>
+</html>
